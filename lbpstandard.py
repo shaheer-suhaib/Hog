@@ -29,25 +29,26 @@ def lbp(img, filter):
         for j in range(cols - fcols + 1):
             window = img[i:i + frows, j:j + fcols]
             img2[i, j] = lbpAlgo(window)
-    return img2
+    return img2.astype(np.uint8)
 
 def main():
+    # Initialize Pi Camera
     picam2 = Picamera2()
-    picam2.preview_configuration.main.size = (320, 240)
+    picam2.preview_configuration.main.size = (320, 240)  # Lower resolution = faster processing
     picam2.preview_configuration.main.format = "RGB888"
     picam2.configure("preview")
     picam2.start()
-    time.sleep(1)
+    time.sleep(1)  # Warm-up time
 
     while True:
         frame = picam2.capture_array()
         gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
-        padded = padding(gray, 1)
+        padded = padding(gray.copy(), 1)
         filter = np.zeros((3, 3), dtype=np.uint8)
         lbp_frame = lbp(padded, filter)
 
         cv.imshow("Original", gray)
-        cv.imshow("LBP Frame", lbp_frame)
+        cv.imshow("LBP Output", lbp_frame)
 
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
