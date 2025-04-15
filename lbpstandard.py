@@ -39,15 +39,25 @@ def main():
     picam2.start()
     time.sleep(1)
 
+    last_capture_time = time.time()  # Initialize time tracking
+    capture_interval = 3  # Capture every 3 seconds
+
     while True:
         frame = picam2.capture_array()
         gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
 
-        padded = padding(gray, 1)
-        lbp_frame = lbp(padded)
+        # Capture frame and compute LBP every few seconds
+        current_time = time.time()
+        if current_time - last_capture_time >= capture_interval:
+            padded = padding(gray, 1)
+            lbp_frame = lbp(padded)
 
-        cv.imshow("Original", gray)
-        cv.imshow("LBP Output", lbp_frame)
+            # Display both original and LBP frames
+            cv.imshow("Original", gray)
+            cv.imshow("LBP Output", lbp_frame)
+
+            # Update last capture time
+            last_capture_time = current_time
 
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
