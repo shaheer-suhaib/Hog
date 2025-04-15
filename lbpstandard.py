@@ -1,3 +1,4 @@
+from picamera2 import Picamera2
 import cv2 as cv
 import numpy as np
 import time
@@ -20,43 +21,38 @@ def lbpAlgo(window):
     weights = [1 << i for i in range(8)]
     return sum(binary[i] * weights[i] for i in range(8))
 
-def lbp(img, filt):
+def lbp(img, filter):
     img2 = img.copy()
     rows, cols = img.shape
-    frows, fcols = filt.shape
+    frows, fcols = filter.shape
     for i in range(rows - frows + 1):
         for j in range(cols - fcols + 1):
             window = img[i:i + frows, j:j + fcols]
             img2[i, j] = lbpAlgo(window)
     return img2
 
-# Use V4L2 backend
-cap = cv.VideoCapture(0, cv.CAP_V4L2)
+def main():
+    picam2 = Picamera2()
+    picam2.preview_configuration.main.size = (320, 240)
+    picam2.preview_configuration.main.format = "RGB888"
+    picam2.configure("preview")
+    picam2.start()
+    time.sleep(1)
 
-# Set resolution and FPS
-cap.set(cv.CAP_PROP_FRAME_WIDTH, 320)
-cap.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
-cap.set(cv.CAP_PROP_FPS, 15)
+    while True:
+        frame = picam2.capture_array()
+        gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
+        padded = padding(gray, 1)
+        filter = np.zeros((3, 3), dtype=np.uint8)
+        lbp_frame = lbp(padded, filter)
 
-# Warm-up time
-time.sleep(2)
+        cv.imshow("Original", gray)
+        cv.imshow("LBP Frame", lbp_frame)
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Retrying...")
-        continue
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    padded = padding(gray, 1)
-    filter = np.zeros((3, 3), dtype=np.uint8)
-    lbp_frame = lbp(padded, filter)
+    cv.destroyAllWindows()
 
-    cv.imshow('Original', gray)
-    cv.imshow('LBP Frame', lbp_frame)
-
-    if cv.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv.destroyAllWindows()
+if __name__ == '__main__':
+    main()
