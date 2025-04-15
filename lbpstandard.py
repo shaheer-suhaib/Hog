@@ -4,11 +4,12 @@ import numpy as np
 import time
 
 def padding(img, pad):
-    img[:pad, :] = 0
-    img[-pad:, :] = 0
-    img[:, :pad] = 0
-    img[:, -pad:] = 0
-    return img
+    img_padded = img.copy()
+    img_padded[:pad, :] = 0
+    img_padded[-pad:, :] = 0
+    img_padded[:, :pad] = 0
+    img_padded[:, -pad:] = 0
+    return img_padded
 
 def lbpAlgo(window):
     gc = window[1, 1]
@@ -21,31 +22,29 @@ def lbpAlgo(window):
     weights = [1 << i for i in range(8)]
     return sum(binary[i] * weights[i] for i in range(8))
 
-def lbp(img, filter):
+def lbp(img):
     img2 = img.copy()
     rows, cols = img.shape
-    frows, fcols = filter.shape
-    for i in range(rows - frows + 1):
-        for j in range(cols - fcols + 1):
-            window = img[i:i + frows, j:j + fcols]
+    for i in range(1, rows - 1):
+        for j in range(1, cols - 1):
+            window = img[i-1:i+2, j-1:j+2]
             img2[i, j] = lbpAlgo(window)
     return img2.astype(np.uint8)
 
 def main():
-    # Initialize Pi Camera
     picam2 = Picamera2()
-    picam2.preview_configuration.main.size = (320, 240)  # Lower resolution = faster processing
+    picam2.preview_configuration.main.size = (320, 240)
     picam2.preview_configuration.main.format = "RGB888"
     picam2.configure("preview")
     picam2.start()
-    time.sleep(1)  # Warm-up time
+    time.sleep(1)
 
     while True:
         frame = picam2.capture_array()
         gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
-        padded = padding(gray.copy(), 1)
-        filter = np.zeros((3, 3), dtype=np.uint8)
-        lbp_frame = lbp(padded, filter)
+
+        padded = padding(gray, 1)
+        lbp_frame = lbp(padded)
 
         cv.imshow("Original", gray)
         cv.imshow("LBP Output", lbp_frame)
