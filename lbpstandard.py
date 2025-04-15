@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import time
 
 def padding(img, pad):
     img[:pad, :] = 0
@@ -19,46 +20,43 @@ def lbpAlgo(window):
     weights = [1 << i for i in range(8)]
     return sum(binary[i] * weights[i] for i in range(8))
 
-def lbp(img, filter):
+def lbp(img, filt):
     img2 = img.copy()
     rows, cols = img.shape
-    frows, fcols = filter.shape
+    frows, fcols = filt.shape
     for i in range(rows - frows + 1):
         for j in range(cols - fcols + 1):
             window = img[i:i + frows, j:j + fcols]
             img2[i, j] = lbpAlgo(window)
     return img2
 
-def main():
-    cap = cv.VideoCapture(0)
+# Use V4L2 backend
+cap = cv.VideoCapture(0, cv.CAP_V4L2)
 
-    # Reduce resolution for performance
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, 320)
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
+# Set resolution and FPS
+cap.set(cv.CAP_PROP_FRAME_WIDTH, 320)
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
+cap.set(cv.CAP_PROP_FPS, 15)
 
-    if not cap.isOpened():
-        print("Error: Cannot open camera")
-        return
+# Warm-up time
+time.sleep(2)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Frame not captured.")
-            break
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("Retrying...")
+        continue
 
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        padded = padding(gray, 1)
-        filter = np.zeros((3, 3), dtype=np.uint8)
-        lbp_frame = lbp(padded, filter)
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    padded = padding(gray, 1)
+    filter = np.zeros((3, 3), dtype=np.uint8)
+    lbp_frame = lbp(padded, filter)
 
-        cv.imshow('Original', gray)
-        cv.imshow('LBP Frame', lbp_frame)
+    cv.imshow('Original', gray)
+    cv.imshow('LBP Frame', lbp_frame)
 
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
+    if cv.waitKey(1) & 0xFF == ord('q'):
+        break
 
-    cap.release()
-    cv.destroyAllWindows()
-
-if __name__ == '__main__':
-    main()
+cap.release()
+cv.destroyAllWindows()
